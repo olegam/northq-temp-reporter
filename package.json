@@ -1,6 +1,6 @@
 {
   "name": "temp-reporter",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "dependencies": {
     "is-lambda": "^1.0.0",
     "request": "^2.65.0",

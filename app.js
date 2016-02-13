@@ -49,10 +49,10 @@ exports.handler = function(event, context) {
     }
 
     console.log(JSON.stringify(options))
-    //Request.post(options, function(err, response, body) {
-    //  console.log(body)
-    //  callback(err)
-    //})
+    Request.post(options, function(err, response, body) {
+      console.log(body)
+      callback(err)
+    })
   }
 
   var handleErrorAndPostResult = function(err, temperature) {
