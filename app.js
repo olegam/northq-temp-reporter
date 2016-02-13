@@ -1,7 +1,4 @@
-var Step = require('step')
 var Request = require('request')
-var Aws = require('aws-sdk')
-var _ = require('underscore')
 var isLambda = require('is-lambda')
 var secrets = require('./secrets.json')
 
@@ -25,8 +22,9 @@ exports.handler = function(event, context) {
       if (err) return callback(err)
       body = JSON.parse(body)
       var temperature = body.value;
-      console.log('Temp:', temperature)
-      callback(null, temperature)
+      var adjustedTemperature = temperature + secrets.temperature_calibration
+      console.log('Raw temperature:', temperature, ' adjusted:', adjustedTemperature)
+      callback(null, adjustedTemperature)
     })
   }
 
@@ -38,7 +36,7 @@ exports.handler = function(event, context) {
         gauges: [
           {
             name: 'office_temp',
-            'value': temperature,
+            value: temperature,
             source: 'sensor0'
           }
         ]
@@ -51,18 +49,21 @@ exports.handler = function(event, context) {
     }
 
     console.log(JSON.stringify(options))
-    Request.post(options, function(err, response, body) {
-      console.log(body)
-      callback(err)
-    })
+    //Request.post(options, function(err, response, body) {
+    //  console.log(body)
+    //  callback(err)
+    //})
   }
 
-  getTemperature(function(err, temperature) {
+  var handleErrorAndPostResult = function(err, temperature) {
     if (err) return context.fail(err)
     postTemperature(temperature, function(err) {
       if (err) return context.fail(err)
       context.succeed()
     })
-  })
+  }
+
+  console.log('Process version:', process.version)
+  getTemperature(handleErrorAndPostResult)
 
 }

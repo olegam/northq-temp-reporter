@@ -1,12 +1,9 @@
 {
   "name": "temp-reporter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "dependencies": {
-    "aws-sdk": "^2.2.10",
     "is-lambda": "^1.0.0",
     "request": "^2.65.0",
-    "step": "0.0.6",
-    "underscore": "^1.8.3"
   },
   "bin": {
     "ship": "./index.js"
