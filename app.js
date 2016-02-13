@@ -59,7 +59,7 @@ exports.handler = function(event, context) {
     if (err) return context.fail(err)
     postTemperature(temperature, function(err) {
       if (err) return context.fail(err)
-      context.succeed()
+      context.succeed(temperature)
     })
   }
 
