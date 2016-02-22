@@ -7,40 +7,58 @@ exports.handler = function(event, context) {
   console.log('getting temperature...')
 
 
-  var getTemperature = function(callback) {
-    var getTempUrl = 'https://homemanager.tv/main/makeRawCall?serial_nr=' + secrets.northq_gateway +
-   '&command=json/ms_sensor_get?node_id=' + secrets.northq_sensor_node + '&wake=0'
-   var options = {
-    url : getTempUrl,
-    headers: {
-      Cookie : secrets.northq_cookie
+  var getAPIToken = function(username, password, callback) {
+    var options = {
+      url : 'https://homemanager.tv/token/new.json',
+      form: {
+        username : username,
+        password : password,
+      }
     }
-   }
-   console.log(getTempUrl)
-    Request.get(options, function(err, response, body) {
-      console.log(body)
+    Request.post(options, function(err, res, body) {
       if (err) return callback(err)
-      body = JSON.parse(body)
-      var temperature = body.value;
-      var adjustedTemperature = temperature + secrets.temperature_calibration
-      console.log('Raw temperature:', temperature, ' adjusted:', adjustedTemperature)
-      callback(null, adjustedTemperature)
+      var bodyObject = JSON.parse(body)
+      if (!bodyObject.success) return callback(new Error('NorthQ error:' + body))
+      callback(null, bodyObject)
     })
   }
 
-  var postTemperature = function(temperature, callback) {
+  var getMeasurements = function(session, gateway, callback) {
+    var parameters = session
+    parameters.gateway = gateway
+    console.log(parameters)
+     var options = {
+      url : 'https://homemanager.tv/main/getGatewayStatus',
+       form : parameters
+     }
+    Request.post(options, function(err, response, body) {
+      console.log(body)
+      if (err) return callback(err)
+      body = JSON.parse(body)
+      var sensorNames = ['office_temp', 'unknown_1', 'unknown_2']
+      var gauges = body.MultilevelSensors[0].sensors.map(function(sensor, index) {
+        var m = {}
+        m.value = sensor.value
+        if (index == 0) {
+          var adjustedTemperature = m.value + secrets.temperature_calibration
+          console.log('Raw temperature:', m.value, ' adjusted:', adjustedTemperature)
+          m.value = adjustedTemperature
+        }
+        m.name = sensorNames[index]
+        m.source = 'sensor' + index
+        return m
+      })
+      console.log(gauges)
+      callback(null, gauges)
+    })
+  }
+
+  var postMeasurements = function(gauges, callback) {
     var options = {
       url : 'https://metrics-api.librato.com/v1/metrics',
       form: {
         source: isLambda ? 'aws-lamda' : 'debug',
-        gauges: [
-          {
-            name: 'office_temp',
-            value: temperature,
-            source: 'sensor0'
-          }
-        ]
-
+        gauges: gauges
       },
       auth: {
         user: secrets.librato_user,
@@ -55,15 +73,20 @@ exports.handler = function(event, context) {
     })
   }
 
-  var handleErrorAndPostResult = function(err, temperature) {
+  var handleErrorAndPostResult = function(err, gauges) {
     if (err) return context.fail(err)
-    postTemperature(temperature, function(err) {
+    postMeasurements(gauges, function(err) {
       if (err) return context.fail(err)
-      context.succeed(temperature)
+      context.succeed(gauges)
     })
   }
 
   console.log('Process version:', process.version)
-  getTemperature(handleErrorAndPostResult)
+  getAPIToken(secrets.northq_username, secrets.northq_password, function (err, session) {
+    if (err) return context.fail(err)
+    getMeasurements(session, secrets.northq_gateway, handleErrorAndPostResult)
+  })
+
+
 
 }
