@@ -3,7 +3,7 @@
   "version": "0.2.1",
   "dependencies": {
     "is-lambda": "^1.0.0",
-    "request": "^2.65.0",
+    "request": "^2.65.0"
   },
   "bin": {
     "ship": "./index.js"
